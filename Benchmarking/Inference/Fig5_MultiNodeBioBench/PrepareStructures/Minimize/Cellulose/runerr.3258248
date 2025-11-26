@@ -1,0 +1,17 @@
+
+Lmod is automatically replacing "cce/18.0.1" with "amd/6.2.4".
+
+
+Lmod is automatically replacing "PrgEnv-cray/8.6.0" with "PrgEnv-amd/8.6.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-libsci/24.11.0     2) cray-mpich/8.1.31     3) darshan-runtime/3.4.6-mpi
+
+
+Inactive Modules:
+  1) darshan-runtime
+
+The following have been reloaded with a version change:
+  1) cray-mpich/8.1.31 => cray-mpich/8.1.30
+

@@ -1,0 +1,42 @@
+variable read_name index 25atom
+variable buffer index 5
+
+
+boundary f f f
+units metal
+
+pair_style allegro
+atom_style atomic
+read_data ${read_name}.data
+
+#ASE writes coords starting at 0, I want to center the molecule, so I add 4 Angstrom buffer to the cell and here I shift the cell 
+change_box all x delta -${buffer} -${buffer} y delta -${buffer} -${buffer} z delta -${buffer} -${buffer} units lattice
+
+
+pair_coeff	* * MODELBLANK C H O  
+
+
+timestep 0.0005
+
+minimize 1e-7 1e-7 100 1000
+
+
+#Generate velocities at T = 300 with seed 12345 with rotations, following a gaussian distribution
+velocity all create 300.0 SEEDBLANK rot yes dist gaussian
+fix 1 all nvt/kk temp 300.0 300.0 0.050
+fix 2 all momentum 10 linear 1 1 1 angular
+
+run 20000
+
+reset_timestep 0
+unfix 1
+unfix 2
+fix 1 all nve
+
+#Set thermodynamics output settings:
+thermo_style custom step temp vol pe press pxx pyy pzz pxy pyz pxz spcpu
+thermo 1000
+
+run 20000 
+
+write_data ${read_name}_complete.data

@@ -1,0 +1,26 @@
+variable read_name index dhfr
+
+
+boundary p p p
+units metal
+
+pair_style allegro
+atom_style full
+read_data ${read_name}.data
+
+mass 1 1.0078
+mass 2 12.011
+mass 3 14.0067
+mass 4 15.999
+mass 5 32.065
+
+
+
+pair_coeff	* * /lustre/orion/mat281/proj-shared/25_01_09_SPICE-2_train/HyperparameterSweep/ModelParameters10/Final_Compiled/Model22_lmax-3_layer-2_tensor-64_kernel.nequip.pt2 H C N O S
+
+
+timestep 0.0005
+
+minimize 1e-7 1e-7 100 1000
+
+write_data ${read_name}_minimized.data

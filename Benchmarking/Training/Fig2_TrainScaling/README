@@ -1,0 +1,3 @@
+The only difference needed to obtain the torch.compile result as compared to the TorchScript result is to comment out the line `compile_mode: compile` within the "model" section of the config file.
+
+Adjust the number of nodes and gpus in the submit.job script and the config.yaml in order to achieve different strong scaling datapoints.
