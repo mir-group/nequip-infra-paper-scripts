@@ -1,0 +1,366 @@
+run: [train]
+num_nodes: 4
+devices: 4
+
+cutoff_radius: 6.0
+chemical_symbols: ["B","Br","C","Cl","F","H","I","K","Li","N","Na","O","P","S","Si"] 
+
+model_type_names: ${chemical_symbols}
+
+#Specify Run Name:
+logger_name: SPICE-Medium
+
+#Specify Model Hyperparameters:
+model_seed: 1024
+model_dtype: float32
+
+#Assumes bessel embedding
+model_numbessels: 8
+model_bessel_trainable: false
+model_polynomial_cutoff_p: 6
+model_two_body_embedding_dim: 32
+model_two_body_mlp_hidden_layers_depth: 2
+model_two_body_mlp_hidden_layers_width: 64
+model_two_body_mlp_nonlinearity: silu
+
+#Assumes Spline Embedding
+#model_num_splines: MODELNUMSPLINESBLANK
+#model_spline_span: MODELSPLINESPANBLANK
+
+model_scalar_embed_output_dim: 128
+
+model_lmax: 3
+model_parity: o3_full
+model_numlayers: 2
+
+model_num_scalar_features: 64
+model_num_tensor_features: 64
+
+model_allegro_mlp_hidden_layers_depth: 2
+model_allegro_mlp_hidden_layers_width: 256
+model_allegro_mlp_nonlinearity: silu
+
+model_readout_mlp_hidden_layers_depth: 1
+model_readout_mlp_hidden_layers_width: 128
+model_readout_mlp_nonlinearity: null
+
+#Specify Training Hyperparameters:
+batch_size: 8
+
+ema_decay: 0.999
+
+model_tp_path_channel_coupling: true
+model_forward_normalize: true
+
+earlystopping_min_delta: 0.000000001
+earlystopping_patience: 20
+
+loss_force_weight: 1
+loss_energyatom_weight: 1
+
+optimizer_lr: 0.002
+optimizer_amsgrad: false
+
+lr_scheduler_factor: 0.8
+lr_scheduler_patience: 10
+lr_scheduler_threshold: 0.000001
+lr_scheduler_minlr: 0.0000001
+
+allow_tf32: false
+seed: 401
+
+
+
+data:
+  _target_: nequip.data.datamodule.NequIPDataModule
+  seed: ${seed} #42022024             # dataset seed for reproducibility
+  
+  train_dataset:
+    _target_: nequip.data.dataset.NequIPLMDBDataset
+    file_path: /global/cfs/cdirs/m4297/25_03_21_SPICE/Dataset/Revise-TotalEnergy/SPICE-2.0.1-processed_element-types_all_within-6.0_0-totalcharge_use-dfttotalenergy_units-eV-A_train.lmdb 
+    transforms:
+        # data doesn't usually come with a neighborlist -- this tranforms prepares the neighborlist
+      - _target_: nequip.data.transforms.NeighborListTransform
+        r_max: ${cutoff_radius}
+        # the models only know atom types, which can be different from the chemical species (e.g. C, H)
+        # for instance we can have data with different charge states of carbon, which means they are
+        # all labeled by chemical species `C`, but may have different atom type labels based on the charge states
+        # in this case, the atom types are the same as the chemical species, but we still have to include this
+        # transformation to ensure that the data has 0-indexed atom type lists used in the various model operations
+      - _target_: nequip.data.transforms.ChemicalSpeciesToAtomTypeMapper
+        chemical_symbols: ${chemical_symbols}
+  val_dataset:
+    _target_: nequip.data.dataset.NequIPLMDBDataset
+    file_path: /global/cfs/cdirs/m4297/25_03_21_SPICE/Dataset/Revise-TotalEnergy/SPICE-2.0.1-processed_element-types_all_within-6.0_0-totalcharge_use-dfttotalenergy_units-eV-A_val.lmdb 
+    transforms:
+        # data doesn't usually come with a neighborlist -- this tranforms prepares the neighborlist
+      - _target_: nequip.data.transforms.NeighborListTransform
+        r_max: ${cutoff_radius}
+        # the models only know atom types, which can be different from the chemical species (e.g. C, H)
+        # for instance we can have data with different charge states of carbon, which means they are
+        # all labeled by chemical species `C`, but may have different atom type labels based on the charge states
+        # in this case, the atom types are the same as the chemical species, but we still have to include this
+        # transformation to ensure that the data has 0-indexed atom type lists used in the various model operations
+      - _target_: nequip.data.transforms.ChemicalSpeciesToAtomTypeMapper
+        chemical_symbols: ${chemical_symbols}
+  test_dataset:
+    - _target_: nequip.data.dataset.NequIPLMDBDataset
+      file_path: /global/cfs/cdirs/m4297/25_03_21_SPICE/Dataset/Revise-TotalEnergy/SPICE-2.0.1-processed_element-types_all_within-6.0_0-totalcharge_use-dfttotalenergy_units-eV-A_test.lmdb 
+      transforms:
+        # data doesn't usually come with a neighborlist -- this tranforms prepares the neighborlist
+        - _target_: nequip.data.transforms.NeighborListTransform
+          r_max: ${cutoff_radius}
+          # the models only know atom types, which can be different from the chemical species (e.g. C, H)
+          # for instance we can have data with different charge states of carbon, which means they are
+          # all labeled by chemical species `C`, but may have different atom type labels based on the charge states
+          # in this case, the atom types are the same as the chemical species, but we still have to include this
+          # transformation to ensure that the data has 0-indexed atom type lists used in the various model operations
+        - _target_: nequip.data.transforms.ChemicalSpeciesToAtomTypeMapper
+          chemical_symbols: ${chemical_symbols}
+
+          
+  train_dataloader:
+    _target_: torch.utils.data.DataLoader
+    batch_size: ${batch_size}
+    num_workers: 7
+    shuffle: true
+  val_dataloader:
+    _target_: torch.utils.data.DataLoader
+    batch_size: ${batch_size}
+    num_workers: ${data.train_dataloader.num_workers}
+    shuffle: false
+  test_dataloader: ${data.val_dataloader}
+  #stats_manager:
+  #  _target_: nequip.data.DataStatisticsManager
+  #  dataloader_kwargs:
+  #    batch_size: ${batch_size}
+  #  metrics:
+  #    - field:
+  #        _target_: nequip.data.NumNeighbors
+  #      metric: 
+  #        _target_: nequip.data.Mean
+  #      name: num_neighbors_mean
+  #    - field:
+  #        _target_: nequip.data.PerAtomModifier
+  #        field: total_energy
+  #      metric:
+  #        _target_: nequip.data.Mean
+  #      name: per_atom_energy_mean
+  #    - field: forces
+  #      metric:
+  #        _target_: nequip.data.RootMeanSquare
+  #      per_type: true
+  #      name: per_type_forces_rms
+  #      ignore_nan: true
+  
+trainer:
+  _target_: lightning.Trainer
+  max_epochs: 11
+  check_val_every_n_epoch: 1
+  log_every_n_steps: 100
+  num_nodes: ${num_nodes}
+  devices: ${devices}
+  strategy: 
+    _target_: nequip.train.SimpleDDPStrategy
+    process_group_backend: nccl
+  callbacks:
+    - _target_: lightning.pytorch.callbacks.LearningRateMonitor
+      logging_interval: epoch
+
+    # to log the loss coefficients
+    - _target_: nequip.train.callbacks.LossCoefficientMonitor
+      interval: epoch
+      frequency: 1
+    - _target_: nequip.train.callbacks.TestTimeXYZFileWriter
+      out_file: ${hydra:runtime.output_dir}/test
+      output_fields_from_original_dataset: [total_energy, forces,subset]
+      chemical_symbols: ${chemical_symbols}
+    - _target_: lightning.pytorch.callbacks.EarlyStopping
+      monitor: val0_epoch/weighted_sum        # validation metric to monitor
+      min_delta: ${earlystopping_min_delta}                         # how much to be considered a "change"
+      patience: ${earlystopping_patience}                            # how many instances of "no change" before stopping
+      verbose: True
+    # checkpoint based on some criterion
+    - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+      monitor: val0_epoch/weighted_sum        # validation metric to monitor
+      dirpath: ${hydra:runtime.output_dir}    # use hydra output directory
+      filename: best                          # best.ckpt is the checkpoint name
+      save_last: true                         # last.ckpt will be saved
+    
+  logger:
+    # Lightning wandb logger https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.loggers.wandb.html#module-lightning.pytorch.loggers.wandb
+    _target_: lightning.pytorch.loggers.wandb.WandbLogger
+    project: SPICE-2_Perlmutter-Benchmark
+    name: ${logger_name}
+    version: ${logger_name} 
+    save_dir: ${hydra:runtime.output_dir}  # use resolver to place wandb logs in hydra's output directory    
+
+training_module:
+  _target_: nequip.train.EMALightningModule
+  loss:
+    _target_: nequip.train.MetricsManager
+    metrics:
+      - name: force_MSE
+        field: forces
+        coeff: ${loss_force_weight}
+        metric:
+          _target_: nequip.train.MeanSquaredError
+      - name: peratom_E_MSE
+        field:
+          _target_: nequip.data.PerAtomModifier
+          field: total_energy
+        coeff: ${loss_energyatom_weight}
+        metric:
+          _target_: nequip.train.MeanSquaredError
+  val_metrics: 
+    _target_: nequip.train.MetricsManager
+    type_names: ${model_type_names}
+    metrics:
+      - name: F_RMSE
+        field: forces
+        coeff: 1
+        metric:
+          _target_: nequip.train.RootMeanSquaredError
+      - name: peratom_E_RMSE
+        field:
+          _target_: nequip.data.PerAtomModifier
+          field: total_energy
+        coeff: 1
+        metric:
+          _target_: nequip.train.RootMeanSquaredError
+      # For monitoring only below:
+      # Energy MAE,MSE
+      - name: E_MAE
+        field: total_energy
+        coeff: null
+        metric:
+          _target_: nequip.train.MeanAbsoluteError
+      - name: E_RMSE
+        field: total_energy
+        coeff: null
+        metric:
+          _target_: nequip.train.RootMeanSquaredError
+      # Force MAE
+      - name: F_MAE
+        field: forces
+        coeff: null
+        metric:
+          _target_: nequip.train.MeanAbsoluteError
+      # Per atom energy MAE
+      - name: peratom_E_MAE
+        field:
+          _target_: nequip.data.PerAtomModifier
+          field: total_energy
+        coeff: null
+        metric:
+          _target_: nequip.train.MeanAbsoluteError
+      # Per type Force errors:
+      - name: F_RMSE_pertype
+        field: forces
+        coeff: null
+        metric:
+          _target_: nequip.train.RootMeanSquaredError
+        per_type: true
+      - name: F_MAE_pertype
+        field: forces
+        coeff: null
+        metric:
+          _target_: nequip.train.MeanAbsoluteError
+        per_type: true
+
+  test_metrics: ${training_module.val_metrics}
+
+  ema_decay: ${ema_decay}
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: ${optimizer_lr}
+    weight_decay: 0.000001
+    amsgrad: ${optimizer_amsgrad}
+  lr_scheduler:
+    # any torch compatible lr sceduler
+    scheduler:
+      _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+      factor: ${lr_scheduler_factor}
+      patience: ${lr_scheduler_patience}
+      threshold: ${lr_scheduler_threshold}
+      min_lr: ${lr_scheduler_minlr}
+    monitor: val0_epoch/weighted_sum
+    interval: epoch
+    frequency: 1
+
+  
+  model: 
+    _target_: allegro.model.AllegroModel
+    compile_mode: compile
+    # === basic model params ===
+    seed: ${model_seed}
+    model_dtype: ${model_dtype}
+    type_names: ${model_type_names}
+    r_max: ${cutoff_radius}
+
+
+    scalar_embed:
+      # classic option is the Bessel scalar embedding module
+      _target_: allegro.nn.TwoBodyBesselScalarEmbed
+      num_bessels: ${model_numbessels}
+      bessel_trainable: ${model_bessel_trainable}
+      polynomial_cutoff_p: ${model_polynomial_cutoff_p}
+      two_body_embedding_dim: ${model_two_body_embedding_dim}
+      two_body_mlp_hidden_layers_depth: ${model_two_body_mlp_hidden_layers_depth}
+      two_body_mlp_hidden_layers_width: ${model_two_body_mlp_hidden_layers_width}
+      two_body_mlp_nonlinearity: ${model_two_body_mlp_nonlinearity}
+
+      # one could also use the spline embedding module with less hyperparameters
+      #_target_: allegro.nn.TwoBodySplineScalarEmbed
+      #num_splines: ${model_num_splines}
+      #spline_span: ${model_spline_span}
+
+
+    scalar_embed_output_dim: ${model_scalar_embed_output_dim}
+
+    # == symmetry ==
+    # maximum order l to use in spherical harmonics embedding, 1 is baseline (fast), 2 is more accurate, but slower, 3 highly accurate but slow
+    l_max: ${model_lmax}
+    # whether to include parity symmetry equivariance
+    # allowed: o3_full, o3_restricted, so3
+    parity_setting: ${model_parity}   
+    tp_path_channel_coupling: ${model_tp_path_channel_coupling}
+    forward_normalize: ${model_forward_normalize}
+
+    # == allegro layers ==
+    # number of tensor product layers, 1-3 usually best, more is more accurate but slower
+    num_layers: ${model_numlayers}
+    
+    num_scalar_features: ${model_num_scalar_features}
+    
+    # number of tensor features, more is more accurate but slower, 1, 4, 8, 16, 64, 128 are good options to try depending on data set
+    num_tensor_features: ${model_num_tensor_features}
+
+    allegro_mlp_hidden_layers_depth: ${model_allegro_mlp_hidden_layers_depth}
+    allegro_mlp_hidden_layers_width: ${model_allegro_mlp_hidden_layers_width}
+    allegro_mlp_nonlinearity: ${model_allegro_mlp_nonlinearity}
+
+    # == readout ==
+    readout_mlp_hidden_layers_depth: ${model_readout_mlp_hidden_layers_depth}
+    readout_mlp_hidden_layers_width: ${model_readout_mlp_hidden_layers_width}
+    readout_mlp_nonlinearity: ${model_readout_mlp_nonlinearity}
+
+    # average number of neighbors for edge sum normalization
+    avg_num_neighbors: 24.198333704518898 #${training_data_stats:num_neighbors_mean}
+    
+    # == per-type per-atom scales and shifts ==
+    # Order is:             [B,                  Br,               C,                  Cl,                 F,                 H,                   I,                 K,                 Li,                  N,                   Na,               O,                P,                 S,                Si]                 #Ca,                 Mg]
+    per_type_energy_shifts: [-671.3462690991083,-70045.28385080204,-1030.5671648271828,-12522.649269035726,-2715.318528602957,-13.571964772646918,-8102.524593409054,-16321.459209487615,-198.24187830976174,-1486.3750255780376,-4411.337512366582,-2043.933693071156,-9287.407133426237,-10834.4844708122,-7875.332543264803] #,-18420.82522694509,-5422.381382400712] Energy of neutral isolated atom, OR charge state present in dataset after removing non-neutral frames.
+    per_type_energy_scales: [1.2173332450084946, 0.6109583629304155,1.2571483291774914, 0.6602642494436329,0.9071029808279136,0.5945886269274808,1.2006923774046,1.269463026026707, 1.1462756986711797,1.4009897375820222, 1.5253667432829452,1.3012886525276375,2.5027805460674997,1.3631354186130042, 1.1990232381708512] #${training_data_stats:per_type_forces_rms}
+    per_type_energy_scales_trainable: false
+    per_type_energy_shifts_trainable: false
+
+    # == ZBL pair potential ==
+    pair_potential:
+      _target_: nequip.nn.pair_potential.ZBL
+      units: metal     # Ang and kcal/mol, LAMMPS unit names;  allowed values "metal" and "real"
+      chemical_species: ${chemical_symbols}   # must tell ZBL the chemical species of the various model atom types
+
+# global options
+global_options:
+  allow_tf32: ${allow_tf32}

@@ -1,0 +1,32 @@
+#!/bin/bash
+#SBATCH -N 10
+#SBATCH -t 00:30:00          
+#SBATCH -J MD
+#SBATCH -A mat281
+#SBATCH -o runout.%j  
+#SBATCH -e runerr.%j  
+#SBATCH -p batch
+#SBATCH -q debug
+#SBATCH --ntasks-per-node=8
+#SBATCH --gpus-per-node=8
+
+infile=lammps.in
+num_gpu_per_node=8
+nodes_per_run=$SLURM_NNODES
+#Num nodes times num gpu
+num_task=$((num_gpu_per_node*nodes_per_run))
+
+
+
+ALLEGRO_ROOT="/lustre/orion/mat281/proj-shared/25_03_04_AllegroLammps_torch26/"
+source /ccs/home/mdesco/.bashrc
+
+module load PrgEnv-amd
+module load craype-accel-amd-gfx90a
+export MPICH_GPU_SUPPORT_ENABLED=1
+module load amd/6.2.4 cray-mpich/8.1.30 rocm/6.2.4
+export CUDA_HOME=/opt/rocm-6.2.4/
+
+export OMP_NUM_THREADS=1
+srun -N $nodes_per_run -n $num_task -c 7 $ALLEGRO_ROOT/lammps/build-mol_libtorch/lmp -k on g $num_gpu_per_node -sf kk -pk kokkos newton on neigh half -in $infile
+

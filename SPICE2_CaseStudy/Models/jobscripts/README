@@ -1,0 +1,3 @@
+To reach the training times specified in the protocol (for example, 24 hours), these jobscripts are submitted repeatedly, chained by SLURM dependencies.
+
+The script's logic handles the differences in syntax for a restarting nequip-train job.

@@ -1,0 +1,123 @@
+LAMMPS (29 Aug 2024 - Update 1)
+KOKKOS mode with Kokkos version 4.3.1 is enabled (src/KOKKOS/kokkos.cpp:72)
+  will use up to 8 GPU(s) per node
+  using 1 OpenMP thread(s) per MPI task
+package kokkos
+package kokkos newton on neigh half
+variable read_name index cellulose
+
+
+boundary p p p
+units metal
+
+pair_style allegro
+atom_style full
+read_data ${read_name}.data
+read_data cellulose.data
+Reading data file ...
+  orthogonal box = (0 0 0) to (259.22995 124.55805 123.50214)
+  5 by 4 by 4 MPI processor grid
+  reading atoms ...
+  408609 atoms
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     0 = max # of 1-2 neighbors
+     0 = max # of 1-3 neighbors
+     0 = max # of 1-4 neighbors
+     1 = max # of special neighbors
+  special bonds CPU = 0.007 seconds
+  read_data CPU = 2.897 seconds
+
+mass 1 1.0078
+mass 2 12.011
+mass 3 15.999
+
+
+
+pair_coeff	* * /lustre/orion/mat281/proj-shared/25_01_09_SPICE-2_train/HyperparameterSweep/ModelParameters10/Final_Compiled/Model22_lmax-3_layer-2_tensor-64_kernel.nequip.pt2 H C O
+
+
+timestep 0.0005
+
+minimize 1e-7 1e-7 100 1000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8
+  ghost atom cutoff = 8
+  binsize = 8, bins = 33 16 16
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair allegro/kk, perpetual
+      attributes: full, newton on, kokkos_device
+      pair build: full/bin/kk/device
+      stencil: full/bin/3d
+      bin: kk/device
+WARNING: Fix with atom-based arrays not compatible with sending data in Kokkos communication, switching to classic exchange/border communication (src/KOKKOS/comm_kokkos.cpp:754)
+WARNING: Fix with atom-based arrays not compatible with Kokkos sorting on device, switching to classic host sorting (src/KOKKOS/atom_kokkos.cpp:216)
+Per MPI rank memory allocation (min/avg/max) = 9.331 | 9.436 | 9.842 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0             -2.9240974e+08  0             -2.9240974e+08  9946.729     
+        44   0             -2.9242484e+08  0             -2.9242484e+08 -7462.5617    
+Loop time of 113.128 on 80 procs for 44 steps with 408609 atoms
+
+34.6% CPU use with 80 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     -292409742.016893  -292424816.890674  -292424844.878413
+  Force two-norm initial, final = 553.81758 35.994413
+  Force max component initial, final = 5.9760625 2.2727215
+  Final line search alpha, max atom move = 0.0087974079 0.019994058
+  Iterations, force evaluations = 44 71
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 64.697     | 75.32      | 112.83     | 171.1 | 66.58
+Bond    | 1.596e-05  | 2.0039e-05 | 2.7316e-05 |   0.0 |  0.00
+Neigh   | 0.0010289  | 0.0012567  | 0.0017986  |   0.5 |  0.00
+Comm    | 0.15582    | 37.48      | 48.339     | 241.3 | 33.13
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.3267     |            |       |  0.29
+
+Nlocal:        5107.61 ave        6180 max        4783 min
+Histogram: 47 13 0 1 3 4 0 2 4 6
+Nghost:        10237.8 ave       11541 max        9557 min
+Histogram: 13 13 19 12 7 4 0 3 6 3
+Neighs:              0 ave           0 max           0 min
+Histogram: 80 0 0 0 0 0 0 0 0 0
+FullNghs:  1.12889e+06 ave 1.61552e+06 max      990360 min
+Histogram: 52 8 0 0 4 4 0 3 3 6
+
+Total # of neighbors = 90311352
+Ave neighs/atom = 221.02145
+Ave special neighs/atom = 0
+Neighbor list builds = 1
+Dangerous builds = 0
+
+write_data ${read_name}_minimized.data
+write_data cellulose_minimized.data
+System init for write_data ...
+Total wall time: 0:02:05

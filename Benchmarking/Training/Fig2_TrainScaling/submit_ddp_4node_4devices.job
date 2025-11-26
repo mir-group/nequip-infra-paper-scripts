@@ -1,0 +1,47 @@
+#!/bin/bash
+# Marc Descoteaux 2024
+#SBATCH -J Train
+#SBATCH -q batch
+#SBATCH -N 4
+#SBATCH --ntasks-per-node=4 
+#SBATCH --gpus-per-node=4
+##SBATCH --cpus-per-task=7  
+#SBATCH -t 0-04:00:00  
+#SBATCH -o runout.%j
+#SBATCH -e runerr.%j
+#SBATCH -A m4297
+#SBATCH -C gpu&hbm80g
+
+
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+
+
+module load conda
+module load gpu
+module load nccl/2.21.5
+source /ccs/home/${USER}/.bashrc
+conda activate [path-to-conda-env]
+
+job_name=${SLURM_JOB_NAME}
+run_name="SPICE-2_${job_name}"
+infile=$1
+#"config_${run_name}.yaml"
+outdir="./outputs/${infile}"
+
+
+export MASTER_PORT=3442
+export NCCL_SOCKET_IFNAME=hsn0
+
+echo $(hostname -i)
+export MASTER_ADDR=$(hostname -i)
+
+if [ -d "${outdir}" ];then
+sbcast -pf ${outdir}/last.ckpt /tmp/${USER}/last.ckpt
+srun nequip-train -cn $infile  -cp "$(pwd)/configs/" hydra.verbose=true hydra.run.dir=$outdir ++ckpt_path="/tmp/${USER}/last.ckpt" &>> output_${infile}.txt &
+
+else
+srun nequip-train -cn $infile  -cp "$(pwd)/configs/" hydra.verbose=true hydra.run.dir=$outdir &> output_${infile}.txt &
+fi
+
+wait; exit
