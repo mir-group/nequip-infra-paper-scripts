@@ -6,6 +6,14 @@ This repository contains publicly released scripts and examples to reproduce the
 > "High-performance training and inference for deep equivariant interatomic potentials." <br/>
 > https://doi.org/10.48550/arXiv.2504.16068
 
+## Software Versions
+
+This work used:
+- PyTorch 2.6.0
+- [nequip](https://github.com/mir-group/nequip) 0.7.0
+- [allegro](https://github.com/mir-group/allegro) 0.4.0
+- [pair_nequip_allegro](https://github.com/mir-group/pair_nequip_allegro) 0.7.0
+
 ---
 
 ## Repository Organization
